@@ -1,0 +1,6 @@
+.setenv.sh
+*__pycache*
+tests
+todo.md
+.gitignore
+.git

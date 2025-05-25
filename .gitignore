@@ -1,0 +1,5 @@
+.setenv.sh
+.ssl
+*__pycache*
+.venv
+.idea
