@@ -153,5 +153,4 @@ class TSDBController:
         finally:
             # this will automatically roll back any uncommited changes
             await conn.close()
-            self._logger.info("Closed connection")
         # the user of connection should commit explicitly
