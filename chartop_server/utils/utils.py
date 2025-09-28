@@ -1,5 +1,8 @@
-def group_by(arr: list, k):
-    d = dict()
+import datetime
+
+
+def group_by(arr: list, k: str):
+    d: dict = dict()
     for el in arr:
         uid = None
         try:
@@ -15,3 +18,7 @@ def group_by(arr: list, k):
         else:
             d[uid] = [el]
     return d
+
+
+def get_now() -> datetime.datetime:
+    return datetime.datetime.now(tz=datetime.timezone.utc)

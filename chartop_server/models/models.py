@@ -45,7 +45,7 @@ class SingleTSMetadataExternal(BaseModel):
     )
     uid: int = Field(title="Timeseries Integer UID")
     name: str = Field(title="Timeseries Name")
-    description: Optional[str] = Field(default=None, title="Timeseries Description")
+    description: str | None = Field(default=None, title="Timeseries Description")
     unit: Optional[str] = Field(default=None, title="Timeseries Measure Unit")
     source_uid: str = Field(title="Datasource UID")
     uid_from_source: str = Field(
@@ -53,8 +53,9 @@ class SingleTSMetadataExternal(BaseModel):
         description="UID given by data source to the timeseries",
     )
     successful_last_update_time: int = Field(title="Successful Last Update")
-    tags: list[Tag] = Field(default=None, title="Tags")
-    metrics: list[Metric] = Field(default=None, title="Metrics")
+    tags: list[Tag] | None = Field(default=None, title="Tags")
+    metrics: list[Metric] | None = Field(title="Metrics")
+    has_visualization_vector: bool = Field(title="Has Visualization Vector")
 
 
 # class SingleTimeseriesDatapoint(BaseModel):
@@ -78,9 +79,12 @@ class SingleTimeseriesExternal(BaseModel):
     def from_db_models(
         meta_model: TSMetadataModel,
         ts_models: list[TSDataModel],
-        ts_to_tag_models: list[TSToTagModel] = None,
-        ts_to_metric_models: list[TSToMetricModel] = None,
+        ts_to_tag_models: list[TSToTagModel] | None = None,
+        ts_to_metric_models: list[TSToMetricModel] | None = None,
+        ts_uids_with_vv: set[int] | None = None,
     ):
+        if ts_uids_with_vv is None:
+            ts_uids_with_vv = set()
         if not ts_to_tag_models:
             ts_to_tag_models = []
         if not ts_to_metric_models:
@@ -93,8 +97,11 @@ class SingleTimeseriesExternal(BaseModel):
 
         timezone: int = 0
         if len(timestamps) > 0:
+            utcoffset: datetime.timedelta | None = datetime.datetime.utcoffset(
+                ts_models[0].time
+            )
             timezone = int(
-                datetime.datetime.utcoffset(ts_models[0].time).total_seconds() * 1000
+                (utcoffset.total_seconds() * 1000) if utcoffset is not None else 0
             )
 
         return SingleTimeseriesExternal(
@@ -111,6 +118,7 @@ class SingleTimeseriesExternal(BaseModel):
                 successful_last_update_time=int(
                     meta_model.successful_last_update_time.timestamp() * 1000
                 ),
+                has_visualization_vector=meta_model.uid in ts_uids_with_vv,
                 tags=[
                     SingleTSMetadataExternal.Tag(uid=m.tag_uid)
                     for m in ts_to_tag_models
@@ -127,26 +135,27 @@ class SingleTimeseriesExternal(BaseModel):
         )
 
 
+class ChartopEntryExternal(BaseModel):
+    operands: list[SingleTimeseriesExternal]
+    order_by_metric_value: float
+
+
 class MultipleTSMetadataExternal(BaseModel):
     total_ts_count: int
 
 
-class MultipleTimeseriesExternal(BaseModel):
-    single_timeseries: list[SingleTimeseriesExternal] = Field(
-        title="Single Timeseries Data", description="Data of individual timeseries"
+class ChartopExternal(BaseModel):
+    chartop_entries: list[ChartopEntryExternal] = Field(
+        title="Timeseries Data",
+        description="List of entries, each entry containing operands with data for the chart top",
     )
-    multiple_timeseries_metadata: MultipleTSMetadataExternal = Field(
-        default=None,
-        title="Multiple Timeseries Metadata",
-        description="Contains data regarding all single timeseries in this response",
-    )
+    order_by_metric_uid: int
 
 
-class TimeseriesResponse(DataResponse):
-    data: MultipleTimeseriesExternal = Field(
+class ChartopResponse(DataResponse):
+    data: ChartopExternal = Field(
         title="Main Timeseries Response",
-        description="Contains both global data and data "
-        "about each single timeseries that was queried",
+        description="Contains both global data and data about each single entry found",
     )
 
 
@@ -162,3 +171,16 @@ class MetricsResponse(DataResponse):
         title="All Available Metrics",
         description="Returns all available metrics that can be computed for timeseries.",
     )
+
+
+class TSWithVisualizationVectorExternal(SingleTimeseriesExternal):
+    visualization_vector: list[float]
+
+
+class VisualizationVectorsWithOriginExternal(BaseModel):
+    ts_with_visualization_vectors: list[TSWithVisualizationVectorExternal]
+    origin: list[float] | None
+
+
+class VisualizationVectorsResponse(DataResponse):
+    data: VisualizationVectorsWithOriginExternal

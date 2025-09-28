@@ -27,18 +27,18 @@ app = FastAPI(tags=["chartop"], lifespan=lifespan)
 async def tsdb_controller_exception_handler(
     request: Request, exc: TSDBControllerException
 ):
-    logger = structlog.getLogger(component="tsdb controller exception handler")
-    logger.error(f"Unexpected TSDB controller error occurred: {exc}", exc_info=True)
+    logger = structlog.getLogger("tsdb_controller_exception_handler")
+    logger.exception(f"Unexpected TSDB controller error occurred: {exc}", exc_info=exc)
     return JSONResponse(
         status_code=exc.http_status_code,
-        content={"success": False, "message": "Unexpected error occurred."},
+        content={"success": False, "message": str(exc)},
     )
 
 
 @app.exception_handler(Exception)
 async def uvicorn_exception_handler(request: Request, exc: Exception):
-    logger = structlog.getLogger(component="uvicorn exception handler")
-    logger.error(f"Unexpected error occurred: {exc}", exc_info=True)
+    logger = structlog.getLogger("uvicorn_exception_handler")
+    logger.exception(f"Unexpected error occurred: {exc}", exc_info=exc)
     return JSONResponse(
         status_code=500,
         content={
@@ -55,7 +55,7 @@ app.include_router(timeseries.router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("ALLOW_ORIGINS").split(",")
+    allow_origins=os.getenv("ALLOW_ORIGINS", "").split(",")
     if os.getenv("ALLOW_ORIGINS", None)
     else [],
     allow_credentials=False,
