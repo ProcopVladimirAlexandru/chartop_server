@@ -10,7 +10,7 @@ class TSDBControllerContainer:
     @staticmethod
     async def init_controller(controller_config: ConnectionSettings | None = None):
         if controller_config is None:
-            controller_config = ConnectionSettings()
+            controller_config = ConnectionSettings()  # type: ignore
         TSDBControllerContainer.controller_config = controller_config
         TSDBControllerContainer.controller = TSDBController(
             connection_settings=TSDBControllerContainer.controller_config
