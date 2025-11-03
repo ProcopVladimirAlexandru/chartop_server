@@ -4,3 +4,4 @@ tests
 todo.md
 .gitignore
 .git
+*.env
