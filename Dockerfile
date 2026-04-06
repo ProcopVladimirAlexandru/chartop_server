@@ -7,8 +7,8 @@ RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 COPY ./chartop_server /app/chartop_server
 
 WORKDIR /packages
-COPY ./packages/pva_tsdb_connector-1.0.0-py3-none-any.whl /packages
-RUN pip install --no-cache-dir /packages/pva_tsdb_connector-1.0.0-py3-none-any.whl
+COPY ./packages/pva_tsdb_connector-2.0.0-py3-none-any.whl /packages
+RUN pip install --no-cache-dir /packages/pva_tsdb_connector-2.0.0-py3-none-any.whl
 
 WORKDIR /app
 EXPOSE 8443/tcp
