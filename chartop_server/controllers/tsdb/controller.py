@@ -90,7 +90,7 @@ class TSDBController:
                 )
             except Exception as ex:
                 raise TSDBControllerException(
-                    message="Failed to filter timeseries.", http_status_code=500
+                    message="Failed to get tags for timeseries.", http_status_code=500
                 ) from ex
 
             try:
@@ -104,7 +104,8 @@ class TSDBController:
                     ts_to_metric_models_per_ts_uid[m.ts_uids[0]].append(m)
             except Exception as ex:
                 raise TSDBControllerException(
-                    message="Failed to filter timeseries.", http_status_code=500
+                    message="Failed to get metrics for timeseries.",
+                    http_status_code=500,
                 ) from ex
 
             try:
@@ -114,7 +115,7 @@ class TSDBController:
                 ts_models_by_uid = group_by(ts_models, "uid")
             except Exception as ex:
                 raise TSDBControllerException(
-                    message="Failed to filter timeseries.", http_status_code=500
+                    message="Failed to get timeseries points.", http_status_code=500
                 ) from ex
 
             try:
@@ -126,7 +127,8 @@ class TSDBController:
                 )
             except Exception as ex:
                 raise TSDBControllerException(
-                    message="Failed to filter timeseries.", http_status_code=500
+                    message="Failed to get visualization vectors for timeseries.",
+                    http_status_code=500,
                 ) from ex
 
         chartop_external: list[ChartopEntryExternal] = list()
@@ -169,6 +171,7 @@ class TSDBController:
         limit: int,
         exclude_ts_uids: list[int] | None = None,
         start_date: datetime.datetime | None = None,
+        newest_n: int | None = None,
     ) -> VisualizationVectorsResponse:
         if (origin_vector is None and origin_ts_uid is None) or (
             origin_vector is not None and origin_ts_uid is not None
@@ -208,18 +211,34 @@ class TSDBController:
                     ts_to_metric_models_per_ts_uid[m.ts_uids[0]].append(m)
             except Exception as ex:
                 raise TSDBControllerException(
-                    message="Failed to get timeseries with visualization vectors.",
+                    message="Failed to get metrics for timeseries.",
                     http_status_code=500,
                 ) from ex
 
             try:
+                ts_to_tag_models = await self._connector.get_ts_to_tags(
+                    conn=conn, ts_uids=ts_uids
+                )
+                ts_to_tag_models_per_ts_uid = group_by(
+                    ts_to_tag_models, self._connector.ts_to_tag_ts_uid_col.lower()
+                )
+            except Exception as ex:
+                raise TSDBControllerException(
+                    message="Failed to get tags for timeseries.", http_status_code=500
+                ) from ex
+
+            try:
                 ts_models: list[TSDataModel] = await self._connector.get_timeseries(
-                    conn=conn, ts_uids=ts_uids, order_asc=True, start_date=start_date
+                    conn=conn,
+                    ts_uids=ts_uids,
+                    order_asc=True,
+                    start_date=start_date,
+                    newest_n=newest_n,
                 )
                 ts_models_by_uid = group_by(ts_models, "uid")
             except Exception as ex:
                 raise TSDBControllerException(
-                    message="Failed to get timeseries with visualization vectors.",
+                    message="Failed to get timeseries points.",
                     http_status_code=500,
                 ) from ex
 
@@ -229,7 +248,9 @@ class TSDBController:
             single_ts = SingleTimeseriesExternal.from_db_models(
                 meta_model=entry.metadata,
                 ts_models=ts_models_by_uid.get(entry.metadata.uid, list()),
-                ts_to_tag_models=None,
+                ts_to_tag_models=ts_to_tag_models_per_ts_uid.get(
+                    entry.metadata.uid, []
+                ),
                 ts_to_metric_models=ts_to_metric_models_per_ts_uid.get(
                     entry.metadata.uid, list()
                 ),

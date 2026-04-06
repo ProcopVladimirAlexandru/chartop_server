@@ -50,14 +50,17 @@ async def get_visualization_vectors(
     exclude_ts_uids: list[int] | None = Query(default=None, title="Excluded TS UIDs"),
 ) -> VisualizationVectorsResponse:
     controller = TSDBControllerContainer.get_controller()
+    start_date: datetime.datetime | None = None
+    if os.getenv("VISUALIZATION_VECTORS_TS_START_DATE_DAYS_DIFF", None) is not None:
+        start_date = get_now() - datetime.timedelta(
+            days=int(os.environ["VISUALIZATION_VECTORS_TS_START_DATE_DAYS_DIFF"])
+        )
     return await controller.get_visualization_vectors(
         origin_vector=origin_vector,
         origin_ts_uid=origin_ts_uid,
         radius=radius,
         limit=limit,
         exclude_ts_uids=exclude_ts_uids,
-        start_date=get_now()
-        - datetime.timedelta(
-            days=int(os.getenv("VISUALIZATION_VECTORS_TS_START_DATE_DAYS_DIFF", "90"))
-        ),
+        start_date=start_date,
+        newest_n=int(os.getenv("VISUALIZATION_VECTORS_TS_LATEST_N", "365")),
     )
